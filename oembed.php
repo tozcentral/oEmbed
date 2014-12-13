@@ -1,10 +1,17 @@
 <?php
 /**
  * oEmbed library
+ *
+ * @package oEmbed
+ * @author Chris Fuller <tozcentral@googlemail.com>
+ * @copyright Copyright (c) 2014, Chris Fuller
  */
  
 namespace oEmbed;
 
+/**
+ * Predefined list of schemes and their endpoints
+ */
 $schemes = array (
 	'http://ifttt.com/recipes/*' => 'http://www.ifttt.com/oembed/',
 	'http://*.flickr.com/photos/*' => 'http://www.flickr.com/services/oembed/',
@@ -161,6 +168,17 @@ $schemes = array (
 	'http://www.isnare.com/*' => 'http://www.isnare.com/oembed/',
 );
 
+/**
+ * Basic class for describing an embeddable item
+ *
+ * @var string $type The type of embeddable item, for example, video, photo, rich, etc.
+ * @var string $version The oEmbed version used, generally 1.0
+ * @var string|null $title Title of the item
+ * @var object|null $author Author of the item, contains name and/or url
+ * @var object|null $provider Provider of the item, contains name and/or url
+ * @var int|null $cache_age How long the item should be cached for before downloading again
+ * @var object|null $thumbnail Information about the thumbnail for the item, contains a url, width and height
+ */
 class oEmbedObject
 {
 	public $type;
@@ -177,20 +195,35 @@ class oEmbedObject
 	public $thumbnail;
 };
 
+/**
+ * Class for describing an embeddable photo
+ *
+ * @var string $url The URL for the photo
+ * @var int $width The width of the photo
+ * @var int $height The Height for the photo
+ */
 class oEmbedPhoto extends oEmbedObject
 {
-	public $type = 'photo';
-	
 	public $url;
 	
 	public $width;
 	public $height;
 	
+	/**
+	 * Embed code for the object, same as $html
+	 *
+	 * @return string The html
+	 */
 	public function embedCode ( )
 	{
-		return $this->html;
+		return "<img src=\"{$this->url}\" width=\"{$this->width}\" height=\"{$this->height}\"/>";
 	}
 	
+	/**
+	 * Embed code for the object that works with responsive design sites
+	 *
+	 * @return string|null The html, or null if responsive design code couldn't be generated
+	 */
 	public function embedResponsive ( )
 	{
 		if ( !preg_match ( '#src="(.*[^\\])*"#i', $this->html, $match ) )
@@ -198,24 +231,39 @@ class oEmbedPhoto extends oEmbedObject
 			
 		$bottom_padding = $this->height / $this->width * 100;
 		
-		return "<div style=\"position:relative;padding-bottom:$bottom_padding;\"><img src=\"${match[1]}\" style=\"position:absolute;left:0;top:0;width:100%;height:100%;\"></div>";
+		return "<div style=\"position:relative;padding-bottom:$bottom_padding;\"><img src=\"{$match[1]}\" style=\"position:absolute;left:0;top:0;width:100%;height:100%;\"/></div>";
 	}
 };
 
+/**
+ * Class for describing an embeddable video
+ *
+ * @var string $url The URL for the photo
+ * @var int $width The width of the photo
+ * @var int $height The Height for the photo
+ */
 class oEmbedVideo extends oEmbedObject
 {
-	public $type = 'video';
-	
 	public $html;
 	
 	public $width;
 	public $height;
 	
+	/**
+	 * Embed code for the object, same as $html
+	 *
+	 * @return string The html
+	 */
 	public function embedCode ( )
 	{
 		return $this->html;
 	}
 	
+	/**
+	 * Embed code for the object that works with responsive design sites
+	 *
+	 * @return string|null The html, or null if responsive design code couldn't be generated
+	 */
 	public function embedResponsive ( )
 	{
 		if ( !preg_match ( '#src=("|\')([^"\']*)\\1#ism', $this->html, $match ) )
@@ -223,10 +271,48 @@ class oEmbedVideo extends oEmbedObject
 			
 		$bottom_padding = $this->height / $this->width * 100;
 		
-		return "<div style=\"position:relative;padding-bottom:${bottom_padding}%;\"><iframe src=\"${match[2]}\" style=\"position:absolute;left:0;top:0;width:100%;height:100%;\" frameborder=\"0\" allowfullscreen></iframe></div>";
+		return "<div style=\"position:relative;padding-bottom:{$bottom_padding}%;\"><iframe src=\"{$match[2]}\" style=\"position:absolute;left:0;top:0;width:100%;height:100%;\" frameborder=\"0\" allowfullscreen></iframe></div>";
 	}
 };
+
+/**
+ * Class for describing an embeddable rich content
+ *
+ * @var string $html The embed code for the content
+ * @var int $width The width of the rich content
+ * @var int $height The Height for the rich content
+ */
+class oEmbedRich extends oEmbedObject
+{
+	public $html;
+	
+	public $width;
+	public $height;
+	
+	/**
+	 * Embed code for the object, same as $html
+	 *
+	 * @return string The html
+	 */
+	public function embedCode ( )
+	{
+		return $this->html;
+	}
+}
+
+/**
+ * Class for describing an embeddable link
+ */
+class oEmbedLink extends oEmbedObject
+{
+}
  
+/**
+ * Get the "alternate" links for a web page
+ *
+ * @param string $url The URL of the page
+ * @return array Associated array of type => href for all the rel="alternate" links on the page
+ */
 function getAlternates ( $url )
 {
 	$contents = file_get_contents ( $url );
@@ -255,24 +341,34 @@ function getAlternates ( $url )
 }
 
 /**
- * @param string Endpoint URL
- * @param array Options
- * @return string
+ * Adds parameters array onto the end of the url as a query string
+ *
+ * @param string $url The URL to add the query to the end of
+ * @param array $parameters Associated array of query parameters
+ * @return string The new URL
  */
-function addEndpointOptions ( $endpoint, $options )
+function addToQuery ( $url, $parameters )
 {
-	$query = http_build_query ( $options );
+	$query = http_build_query ( $parameters );
 	if ( $query !== '' )
 	{
-		if ( strpos ( $endpoint, '?' ) === false )
-			$endpoint .= '?' . $query;
+		if ( strpos ( $url, '?' ) === false )
+			$url .= '?' . $query;
 		else
-			$endpoint .= '&' . $query;
+			$url .= '&' . $query;
 	}
 		
-	return $endpoint;
+	return $url;
 }
 
+/**
+ * Generates an endpoint url for an embeddable url by using the rel="alternate" links in the page
+ *
+ * @param string $url embeddable url
+ * @param array $options Associated array of options for the embed, for example: maxwidth or maxheight
+ * @param string $format The format of the response, either json or xml
+ * @return string|null A url of an oembed endpoint
+ */
 function discoverEndpointURL ( $url, $options = array ( ), $format = 'json' )
 {
 	$alternates = getAlternates ( $url );
@@ -296,14 +392,16 @@ function discoverEndpointURL ( $url, $options = array ( ), $format = 'json' )
 	else
 		return null;
 	
-	return addEndpointOptions ( $endpoint, $options );
+	return addToQuery ( $endpoint, $options );
 }
 
 /**
- * Get embed object for the requested url
+ * Get embed object for an embeddable url by using the rel="alternate" links in the page
  *
- * @param string The url of the item, for example, https://www.youtube.com/watch?v=dQw4w9WgXcQ
- * @return oEmbedObject
+ * @param string $url The url of the embeddable item, for example, https://www.youtube.com/watch?v=dQw4w9WgXcQ
+ * @param array $options Associated array of options for the embed, for example: maxwidth or maxheight
+ * @param string $format The format of the response, either json or xml
+ * @return oEmbedObject|null The object containing information about embedding the item at $url
  */
 function discover ( $url, $options = array ( ), $format = 'json' )
 {
@@ -313,10 +411,11 @@ function discover ( $url, $options = array ( ), $format = 'json' )
 /**
  * Check the predefined schemes list for a match to the $url
  *
- * @param string The URL to check for
+ * @global array $schemes Predefined list of schemes and their endpoints
+ * @param string $url The URL to check for
  * @return array|string|null The endpoint, null if none was found
  */
-function getEndpointForURL ( $url )
+function schemeEndpointForURL ( $url )
 {
 global $schemes;
 	foreach ( $schemes as $scheme => $endpoint )
@@ -328,9 +427,17 @@ global $schemes;
 	return null;
 }
 
-function getEndpointURL ( $url, $options = array ( ), $format = 'json' )
+/**
+ * Generates an endpoint url for an embeddable url by using the predefined schemes list
+ *
+ * @param string $url embeddable url
+ * @param array $options Associated array of options for the embed, for example: maxwidth or maxheight
+ * @param string $format The format of the response, either json or xml
+ * @return string|null A url of an oembed endpoint
+ */
+function schemeEndpointURL ( $url, $options = array ( ), $format = 'json' )
 {
-	$endpoint = getEndpointForURL ( $url );
+	$endpoint = schemeEndpointForURL ( $url );
 	
 	if ( !$endpoint )
 		return null;
@@ -358,29 +465,47 @@ function getEndpointURL ( $url, $options = array ( ), $format = 'json' )
 		
 	$options['url'] = $url;
 		
-	return addEndpointOptions ( $endpoint, $options );
+	return addToQuery ( $endpoint, $options );
 }
 
-function getFromScheme ( $url, $options = array ( ) )
+
+/**
+ * Get embed object for the requested url using predefined schemes list
+ *
+ * @param string $url The url of the embeddable item, for example, https://www.youtube.com/watch?v=dQw4w9WgXcQ
+ * @param array $options Associated array of options for the embed, for example: maxwidth or maxheight
+ * @param string $format The format of the response, either json or xml
+ * @return oEmbedObject|null The object containing information about embedding the item at $url
+ */
+function scheme ( $url, $options = array ( ), $format = 'json' )
 {
-	return getOEmbed ( getEndpointURL ( $url, $options ) );
+	return getOEmbed ( schemeEndpointURL ( $url, $options, $format ) );
 }
 
-function get ( $url, $options = array ( ) )
+
+/**
+ * Get embed object for the requested url
+ *
+ * @param string $url The url of the embeddable item, for example, https://www.youtube.com/watch?v=dQw4w9WgXcQ
+ * @param array $options Associated array of options for the embed, for example: maxwidth or maxheight
+ * @param string $format The format of the response, either json or xml
+ * @return oEmbedObject|null The object containing information about embedding the item at $url
+ */
+function get ( $url, $options = array ( ), $format = 'json' )
 {
-	$endpoint = getEndpointURL ( $url, $options );
+	$endpoint = schemeEndpointURL ( $url, $options, $format );
 	
 	if ( !$endpoint )
-		$endpoint = $discoverEndpointURL ( $url, $options );
+		$endpoint = discoverEndpointURL ( $url, $options, $format );
 		
 	return getOEmbed ( $endpoint );
 }
 
 /**
- * Get embed object for the requested url
+ * Get embed object for the endpoint url
  *
- * @param string The url of the item, for example, http://www.youtube.com/oembed?format=json&url=http%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ
- * @return oEmbedObject
+ * @param string $url The url of the item, for example, http://www.youtube.com/oembed?format=json&url=http%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ
+ * @return oEmbedObject|null The object containing information about embedding the item at $url
  */
 function getOEmbed ( $url )
 {
@@ -420,6 +545,12 @@ function getOEmbed ( $url )
 	}
 }
 
+/**
+ * Create the correct object based on type
+ *
+ * @param string $type The type of embeddable item
+ * @return oEmbedObject The object
+ */
 function createOEmbed ( $type )
 {
 	switch ( $type )
@@ -441,16 +572,36 @@ function createOEmbed ( $type )
 	}
 }
 
+/**
+ * Get embed object for JSON encoded data
+ *
+ * @param string $contents JSON encoded string containing info about an embeddable item
+ * @param array $info Information about the request to get $contents (not actually used)
+ * @return oEmbedObject|null The object containing information about embedding the item described in $contents
+ */
 function getOEmbedFromJson ( $contents, $info )
 {
 	return getOEmbedFromObject ( json_decode ( $contents ) );
 }
 
+/**
+ * Get embed object for XML encoded data
+ *
+ * @param string $contents XML encoded string containing info about an embeddable item
+ * @param array $info Information about the request to get $contents (not actually used)
+ * @return oEmbedObject|null The object containing information about embedding the item described in $contents
+ */
 function getOEmbedFromXml ( $contents, $info )
 {
 	return getOEmbedFromObject ( json_decode ( json_encode ( simplexml_load_string ( $contents ) ) ) );
 }
 
+/**
+ * Get embed object from an object created by getOEmbedFromJson or getOEmbedFromXml
+ *
+ * @param string $array The object containing data
+ * @return oEmbedObject|null The object containing information about embedding the item described in $contents
+ */
 function getOEmbedFromObject ( $array )
 {
 	$object = createOEmbed ( $array->type );
@@ -488,7 +639,7 @@ function getOEmbedFromObject ( $array )
 	}
 	
 	if ( isset ( $array->cache_age ) )
-		$object->cache_age = $array->cache_age;
+		$object->cache_age = intval ( $array->cache_age );
 		
 	if ( isset ( $array->thumbnail_url ) )
 	{
