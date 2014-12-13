@@ -5,6 +5,7 @@
  * @package oEmbed
  * @author Chris Fuller <tozcentral@googlemail.com>
  * @copyright Copyright (c) 2014, Chris Fuller
+ * @link http://www.oembed.com/ oEmbed documentation
  * @link http://git.tozcentral.net/oembed/ Git repository
  * @link http://git.tozcentral.net/oembed/docs/ Documentation
  */
