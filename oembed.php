@@ -263,6 +263,19 @@ class oEmbedVideo extends oEmbedObject
 	}
 	
 	/**
+	 * Embed url
+	 *
+	 * @return string The html
+	 */
+	public function embedUrl ( )
+	{
+		if ( !preg_match ( '#src=("|\')([^"\']*)\\1#ism', $this->html, $match ) )
+			return null;
+		
+		return $match[2];
+	}
+	
+	/**
 	 * Embed code for the object that works with responsive design sites
 	 *
 	 * @return string|null The html, or null if responsive design code couldn't be generated
@@ -321,7 +334,7 @@ function getAlternates ( $url )
 	$contents = file_get_contents ( $url );
 	
 	$doc = new \DOMDocument();
-	$doc->loadHTML ( $contents );
+	@$doc->loadHTML ( $contents );
 
 	$links = $doc->getElementsByTagName ( 'link' );
 	$results = array ( );
@@ -375,7 +388,7 @@ function addToQuery ( $url, $parameters )
 function discoverEndpointURL ( $url, $options = array ( ), $format = 'json' )
 {
 	$alternates = getAlternates ( $url );
-		
+
 	if ( is_string ( $options ) )
 	{
 		$temp = is_array ( $format ) ? $format : array ( );
